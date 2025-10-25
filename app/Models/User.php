@@ -22,6 +22,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'password_reset_token',
+        'password_reset_token_expires_at',
+        'password_reset_email_sent_at',
+        'password_reset_attempts',
+        'password_reset_locked_until',
     ];
 
     /**
@@ -32,6 +37,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'password_reset_token', // Hide the reset token as well
     ];
 
     /**
@@ -44,6 +50,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_reset_token_expires_at' => 'datetime',
+            'password_reset_email_sent_at' => 'datetime',
+            'password_reset_locked_until' => 'datetime',
         ];
     }
 
@@ -103,11 +112,41 @@ class User extends Authenticatable
         return $this->hasMany(BmiCalculation::class);
     }
 
-        /**
+    /**
      * Get the loan calculations for the user.
      */
     public function loanCalculations(): HasMany
     {
         return $this->hasMany(LoanCalculation::class);
+    }
+
+    /**
+     * Check if the user is currently locked from password reset attempts.
+     */
+    public function isPasswordResetLocked(): bool
+    {
+        return $this->password_reset_locked_until && now()->lt($this->password_reset_locked_until);
+    }
+
+    /**
+     * Check if the password reset token is expired.
+     */
+    public function isPasswordResetTokenExpired(): bool
+    {
+        return !$this->password_reset_token_expires_at || now()->gt($this->password_reset_token_expires_at);
+    }
+
+    /**
+     * Clear all password reset fields.
+     */
+    public function clearPasswordResetFields(): void
+    {
+        $this->update([
+            'password_reset_token' => null,
+            'password_reset_token_expires_at' => null,
+            'password_reset_email_sent_at' => null,
+            'password_reset_attempts' => 0,
+            'password_reset_locked_until' => null,
+        ]);
     }
 }

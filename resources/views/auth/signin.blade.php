@@ -105,7 +105,7 @@
                             <div>
                                 <div class="flex justify-between items-center mb-1">
                                     <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                                    <a href="#" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">Forgot password?</a>
+                                    <a href="{{ route('password.request') }}" class="text-sm text-primary-600 dark:text-primary-400 hover:underline">Forgot password?</a>
                                 </div>
                                 <input type="password" id="password" name="password" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white transition-colors" placeholder="••••••••">
                             </div>

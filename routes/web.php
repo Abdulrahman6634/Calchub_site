@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HistoryController;
@@ -28,6 +29,14 @@ Route::post('/signin', [AuthController::class, 'login'])->name('signin');
 
 Route::get('/signup', [AuthController::class, 'showSignupForm'])->name('signup.form');
 Route::post('/signup', [AuthController::class, 'signup'])->name('signup');
+
+// Password Reset Routes
+Route::get('/forgot-password', [PasswordResetController::class, 'showEmailForm'])->name('password.request');
+Route::post('/forgot-password/send-code', [PasswordResetController::class, 'sendVerificationCode'])->name('password.send-code');
+Route::post('/forgot-password/verify-code', [PasswordResetController::class, 'verifyCode'])->name('password.verify-code');
+Route::post('/forgot-password/reset', [PasswordResetController::class, 'resetPassword'])->name('password.reset');
+Route::post('/forgot-password/resend-code', [PasswordResetController::class, 'resendCode'])->name('password.resend-code');
+
 
 // Protected routes
 Route::middleware(['auth'])->group(function () {
