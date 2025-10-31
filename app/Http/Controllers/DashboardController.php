@@ -10,6 +10,9 @@ use App\Models\CurrencyConversion;
 use App\Models\PercentageCalculation;
 use App\Models\CalorieCalculation;
 use App\Models\ProfitLossCalculation;
+use App\Models\BmiCalculation;
+use App\Models\DateTimeCalculation;
+use App\Models\LoanCalculation;
 
 class DashboardController extends Controller
 {
@@ -23,8 +26,9 @@ class DashboardController extends Controller
         // Get data
         $quickStats = $this->getQuickStats($user->id);
         $recentCalculations = $this->getRecentCalculations($user->id);
+        $calculatorUsage = $this->getCalculatorUsage($user->id);
 
-        return view('dashboard', compact('quickStats', 'recentCalculations'));
+        return view('dashboard', compact('quickStats', 'recentCalculations', 'calculatorUsage'));
     }
 
     /**
@@ -35,36 +39,19 @@ class DashboardController extends Controller
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
 
-        $cgpaCount = CgpaCalculation::where('user_id', $userId)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->count();
-
-        $currencyCount = CurrencyConversion::where('user_id', $userId)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->count();
-
-        $percentageCount = PercentageCalculation::where('user_id', $userId)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->count();
-
-        $calorieCount = CalorieCalculation::where('user_id', $userId)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->count();
-
-        $profitLossCount = ProfitLossCalculation::where('user_id', $userId)
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->count();
-
-        $totalCalculationsThisWeek = $cgpaCount + $currencyCount + $percentageCount + $calorieCount + $profitLossCount;
+        // Count calculations for each type this week
+        $calculationsThisWeek = 
+            CgpaCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            CurrencyConversion::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            PercentageCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            CalorieCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            ProfitLossCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            BmiCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            DateTimeCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count() +
+            LoanCalculation::where('user_id', $userId)->whereBetween('created_at', [$startOfWeek, $endOfWeek])->count();
 
         // Favorite calculator (based on total count)
-        $counts = [
-            'CGPA' => CgpaCalculation::where('user_id', $userId)->count(),
-            'Currency' => CurrencyConversion::where('user_id', $userId)->count(),
-            'Percentage' => PercentageCalculation::where('user_id', $userId)->count(),
-            'Calories' => CalorieCalculation::where('user_id', $userId)->count(),
-            'Profit & Loss' => ProfitLossCalculation::where('user_id', $userId)->count(),
-        ];
+        $counts = $this->getCalculatorCounts($userId);
         $favoriteCalculator = collect($counts)->sortDesc()->keys()->first() ?? 'N/A';
 
         // Estimated time saved (1.5 min per calculation)
@@ -72,9 +59,79 @@ class DashboardController extends Controller
         $timeSaved = round(($totalCalculations * 1.5) / 60, 1); // in hours
 
         return [
-            'calculationsThisWeek' => $totalCalculationsThisWeek,
+            'calculationsThisWeek' => $calculationsThisWeek,
             'favoriteCalculator' => $favoriteCalculator,
             'timeSaved' => $timeSaved,
+            'totalCalculations' => $totalCalculations,
+        ];
+    }
+
+    /**
+     * Get calculator usage data for the circular chart.
+     */
+    private function getCalculatorUsage($userId)
+    {
+        $counts = $this->getCalculatorCounts($userId);
+        $total = array_sum($counts);
+        
+        if ($total === 0) {
+            return [
+                'data' => [],
+                'total' => 0
+            ];
+        }
+
+        $usageData = [];
+        $colors = [
+            '#22C55E', // Green - CGPA
+            '#3B82F6', // Blue - Currency
+            '#8B5CF6', // Purple - Percentage
+            '#EF4444', // Red - Calories
+            '#F59E0B', // Amber - Profit/Loss
+            '#06B6D4', // Cyan - BMI
+            '#84CC16', // Lime - Date Time
+            '#F97316', // Orange - Loan
+        ];
+
+        $i = 0;
+        foreach ($counts as $calculator => $count) {
+            if ($count > 0) {
+                $percentage = round(($count / $total) * 100, 1);
+                $usageData[] = [
+                    'calculator' => $calculator,
+                    'count' => $count,
+                    'percentage' => $percentage,
+                    'color' => $colors[$i % count($colors)]
+                ];
+            }
+            $i++;
+        }
+
+        // Sort by count descending
+        usort($usageData, function($a, $b) {
+            return $b['count'] - $a['count'];
+        });
+
+        return [
+            'data' => $usageData,
+            'total' => $total
+        ];
+    }
+
+    /**
+     * Get counts for all calculators.
+     */
+    private function getCalculatorCounts($userId)
+    {
+        return [
+            'CGPA' => CgpaCalculation::where('user_id', $userId)->count(),
+            'Currency' => CurrencyConversion::where('user_id', $userId)->count(),
+            'Percentage' => PercentageCalculation::where('user_id', $userId)->count(),
+            'Calories' => CalorieCalculation::where('user_id', $userId)->count(),
+            'Profit & Loss' => ProfitLossCalculation::where('user_id', $userId)->count(),
+            'BMI' => BmiCalculation::where('user_id', $userId)->count(),
+            'Date Time' => DateTimeCalculation::where('user_id', $userId)->count(),
+            'Loan' => LoanCalculation::where('user_id', $userId)->count(),
         ];
     }
 
@@ -83,62 +140,121 @@ class DashboardController extends Controller
      */
     private function getRecentCalculations($userId)
     {
-        $cgpa = CgpaCalculation::where('user_id', $userId)
-            ->latest()->take(5)->get()
-            ->map(fn($calc) => [
-                'type' => 'CGPA',
-                'question' => 'GPA Calculation for ' . count($calc->subjects) . ' subjects',
-                'description' => 'Calculated cumulative grade point average based on subjects and credits.',
-                'result' => $calc->result,
-                'date' => $calc->created_at,
-            ]);
+        $calculations = collect();
 
-        $currency = CurrencyConversion::where('user_id', $userId)
-            ->latest()->take(5)->get()
-            ->map(fn($conv) => [
-                'type' => 'Currency',
-                'question' => "{$conv->amount} {$conv->from_currency} → {$conv->to_currency}",
-                'description' => 'Converted currency value using the latest exchange rate.',
-                'result' => "{$conv->converted_amount} {$conv->to_currency}",
-                'date' => $conv->created_at,
-            ]);
+        // CGPA Calculations
+        $calculations = $calculations->merge(
+            CgpaCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'CGPA Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => 'GPA Calculation for ' . (is_array($calc->subjects) ? count($calc->subjects) : 0) . ' subjects',
+                    'description' => 'Total Credits: ' . ($calc->total_credits ?? 'N/A'),
+                    'result' => 'GPA: ' . ($calc->result ?? 'N/A'),
+                    'date' => $calc->created_at,
+                ])
+        );
 
-        $percentage = PercentageCalculation::where('user_id', $userId)
-            ->latest()->take(5)->get()
-            ->map(fn($calc) => [
-                'type' => 'Percentage',
-                'question' => $this->getPercentageQuestion($calc),
-                'description' => 'Performed percentage-based increase, decrease, or ratio calculation.',
-                'result' => "{$calc->result}",
-                'date' => $calc->created_at,
-            ]);
+        // Currency Conversions
+        $calculations = $calculations->merge(
+            CurrencyConversion::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($conv) => [
+                    'type' => 'Currency Converter',
+                    'name' => $conv->from_currency . ' to ' . $conv->to_currency,
+                    'question' => "Amount: {$conv->amount} {$conv->from_currency}",
+                    'description' => "Exchange Rate: {$conv->rate}",
+                    'result' => "{$conv->converted_amount} {$conv->to_currency}",
+                    'date' => $conv->created_at,
+                ])
+        );
 
-        $calories = CalorieCalculation::where('user_id', $userId)
-            ->latest()->take(5)->get()
-            ->map(fn($calc) => [
-                'type' => 'Calories',
-                'question' => "{$calc->gender} | Age: {$calc->age}, Weight: {$calc->weight}kg, Height: {$calc->height}cm | Activity: {$calc->activity_level} | Goal: {$calc->goal}",
-                'description' => 'Estimated daily calorie needs based on BMR and activity level.',
-                'result' => "{$calc->calorie_target} kcal/day",
-                'date' => $calc->created_at,
-            ]);
+        // Percentage Calculations
+        $calculations = $calculations->merge(
+            PercentageCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'Percentage Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => $this->getPercentageQuestion($calc),
+                    'description' => 'Percentage Calculation',
+                    'result' => $calc->result,
+                    'date' => $calc->created_at,
+                ])
+        );
 
-        $profitLoss = ProfitLossCalculation::where('user_id', $userId)
-            ->latest()->take(5)->get()
-            ->map(fn($calc) => [
-                'type' => 'Profit & Loss',
-                'question' => "Revenue: {$calc->revenue}, COGS: {$calc->cogs}, OpEx: {$calc->operating_expenses}",
-                'description' => 'Calculated business profit, loss, and margin from revenue and expenses.',
-                'result' => "{$calc->net_profit} ({$calc->profit_margin}%)",
-                'date' => $calc->created_at,
-            ]);
+        // Calorie Calculations
+        $calculations = $calculations->merge(
+            CalorieCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'Calorie Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => "Age: {$calc->age}, Gender: {$calc->gender}",
+                    'description' => "Activity: " . ucfirst($calc->activity_level) . ", Goal: " . ucfirst($calc->goal),
+                    'result' => "{$calc->calorie_target} cal/day",
+                    'date' => $calc->created_at,
+                ])
+        );
 
-        return collect()
-            ->merge($cgpa)
-            ->merge($currency)
-            ->merge($percentage)
-            ->merge($calories)
-            ->merge($profitLoss)
+        // Profit Loss Calculations
+        $calculations = $calculations->merge(
+            ProfitLossCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'Profit Loss Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => "Revenue: {$calc->revenue}, COGS: {$calc->cogs}",
+                    'description' => "Operating Expenses: {$calc->operating_expenses}",
+                    'result' => "Profit: {$calc->net_profit}",
+                    'date' => $calc->created_at,
+                ])
+        );
+
+        // BMI Calculations
+        $calculations = $calculations->merge(
+            BmiCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'BMI Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => "Height: {$calc->height} {$calc->height_unit}, Weight: {$calc->weight} {$calc->weight_unit}",
+                    'description' => "Age: {$calc->age}, Gender: {$calc->gender}",
+                    'result' => "BMI: {$calc->bmi} ({$calc->category})",
+                    'date' => $calc->created_at,
+                ])
+        );
+
+        // Date Time Calculations
+        $calculations = $calculations->merge(
+            DateTimeCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'Date Time Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => "Type: " . ucfirst(str_replace('_', ' ', $calc->calculation_type)),
+                    'description' => 'Date/Time Calculation',
+                    'result' => 'Completed',
+                    'date' => $calc->created_at,
+                ])
+        );
+
+        // Loan Calculations
+        $calculations = $calculations->merge(
+            LoanCalculation::where('user_id', $userId)
+                ->latest()->take(3)->get()
+                ->map(fn($calc) => [
+                    'type' => 'Loan Calculator',
+                    'name' => $calc->calculation_name,
+                    'question' => "Amount: {$calc->loan_amount}, Rate: {$calc->interest_rate}%",
+                    'description' => "Term: {$calc->loan_term} {$calc->term_type}",
+                    'result' => "{$calc->monthly_payment}/month",
+                    'date' => $calc->created_at,
+                ])
+        );
+
+        return $calculations
             ->sortByDesc('date')
             ->take(5)
             ->values()

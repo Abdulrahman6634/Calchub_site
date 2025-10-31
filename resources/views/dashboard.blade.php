@@ -16,6 +16,7 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -81,6 +82,13 @@
         .transition-all-300 {
             transition: all 0.3s ease;
         }
+
+        /* Chart container styling */
+        .chart-container {
+            position: relative;
+            height: 240px;
+            width: 240px;
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300 min-h-screen flex flex-col">
@@ -96,8 +104,6 @@
                 <span class="text-xl font-bold text-gray-800 dark:text-white">CalcHub</span>
             </div>
             
-                {{-- <a href="{{ route('profile') }}" class="py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">Profile</a> --}}
-
             <div class="flex items-center space-x-4">
 
                 <!-- Dashboard Navigation -->
@@ -105,7 +111,6 @@
                     <a href="{{ route('dashboard') }}" class="text-primary-600 dark:text-primary-400 font-medium">Dashboard</a>
                     <a href="{{ route('home') }}" class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-smooth">Tools</a>
                     <a href="{{ route('history.index') }}" class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-smooth">History</a>
-                    {{-- <a href="{{ route('profile') }}" class="text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-smooth">Profile</a> --}}
                 </nav>
 
                 <!-- Mobile menu button (hidden on desktop) -->
@@ -139,9 +144,7 @@
                     
                     <!-- Dropdown Menu -->
                     <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 border border-gray-200 dark:border-gray-700">
-                        {{-- <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</a> --}}
                         <a href="{{ route('profile') }}" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><i class="fas fa-user mr-2"></i>Profile</a>
-                        {{-- <a href="{{ route('settings') }}" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Settings</a> --}}
                         <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -162,7 +165,6 @@
                 <a href="{{ route('dashboard') }}" class="py-2 text-primary-600 dark:text-primary-400 font-medium">Dashboard</a>
                 <a href="{{ route('home') }}" class="py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">Tools</a>
                 <a href="{{ route('history.index') }}" class="py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">History</a>
-                {{-- <a href="{{ route('profile') }}" class="py-2 text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">Profile</a> --}}
             </nav>
         </div>
     </header>
@@ -226,6 +228,99 @@
                         </p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Calculator Usage Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Circular Chart -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-scale-in">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Calculator Usage</h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                        Total: {{ $calculatorUsage['total'] }}
+                    </span>
+                </div>
+                
+                <div class="flex flex-col lg:flex-row items-center justify-between">
+                    <!-- Chart Container -->
+                    <div class="chart-container mb-6 lg:mb-0">
+                        <canvas id="usageChart"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-gray-800 dark:text-white">
+                                    {{ $calculatorUsage['total'] }}
+                                </div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">Total</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div class="flex-1 max-w-md">
+                        <div class="space-y-3">
+                            @forelse($calculatorUsage['data'] as $usage)
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-3 h-3 rounded-full" style="background-color: {{ $usage['color'] }}"></div>
+                                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {{ $usage['calculator'] }}
+                                    </span>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {{ $usage['count'] }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ $usage['percentage'] }}%
+                                    </div>
+                                </div>
+                            </div>
+                            @empty
+                            <div class="text-center text-gray-500 dark:text-gray-400 py-4">
+                                No calculation data yet
+                            </div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Most Used Calculator -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-scale-in">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-6">Most Used</h2>
+                
+                @if(!empty($calculatorUsage['data']))
+                    @php $mostUsed = $calculatorUsage['data'][0]; @endphp
+                    <div class="text-center">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-white text-2xl font-bold" 
+                             style="background-color: {{ $mostUsed['color'] }}">
+                            {{ $mostUsed['percentage'] }}%
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                            {{ $mostUsed['calculator'] }}
+                        </h3>
+                        <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            {{ $mostUsed['count'] }} calculations
+                        </p>
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                Usage Distribution
+                            </div>
+                            <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2">
+                                <div class="h-2 rounded-full" 
+                                     style="width: {{ $mostUsed['percentage'] }}%; background-color: {{ $mostUsed['color'] }}"></div>
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="text-center text-gray-500 dark:text-gray-400 py-8">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <p>Start using calculators to see usage statistics</p>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -402,82 +497,160 @@
     </footer>
 
     <script>
-        // Dark mode toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            const mobileMenuButton = document.getElementById('mobile-menu-button');
-            const mobileMenu = document.getElementById('mobile-menu');
+// Dark mode toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
 
-            // Initialize theme icons
-            if (document.documentElement.classList.contains('dark')) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
+    // Initialize theme icons
+    if (document.documentElement.classList.contains('dark')) {
+        themeToggleLightIcon.classList.remove('hidden');
+    } else {
+        themeToggleDarkIcon.classList.remove('hidden');
+    }
 
-            // Theme toggle
-            themeToggle.addEventListener('click', function() {
-                // Toggle icons
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
+    // Theme toggle
+    themeToggle.addEventListener('click', function() {
+        // Toggle icons
+        themeToggleDarkIcon.classList.toggle('hidden');
+        themeToggleLightIcon.classList.toggle('hidden');
 
-                // Toggle theme
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
+        // Toggle theme
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+        }
+        
+        // Reinitialize charts after theme change
+        setTimeout(initializeCharts, 300);
+    });
+
+    // Mobile menu toggle
+    if (mobileMenuButton && mobileMenu) {
+        mobileMenuButton.addEventListener('click', function() {
+            mobileMenu.classList.toggle('hidden');
+        });
+    }
+
+    // Search functionality for calculators
+    const searchInput = document.querySelector('input[type="text"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const calculatorCards = document.querySelectorAll('.bg-white.rounded-xl.shadow-sm');
+            
+            calculatorCards.forEach(card => {
+                const title = card.querySelector('h3').textContent.toLowerCase();
+                const description = card.querySelector('p').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
                 } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
+                    card.style.display = 'none';
                 }
             });
+        });
+    }
 
-            // Mobile menu toggle
-            if (mobileMenuButton && mobileMenu) {
-                mobileMenuButton.addEventListener('click', function() {
-                    mobileMenu.classList.toggle('hidden');
-                });
-            }
+    // Initialize charts after everything is loaded
+    setTimeout(initializeCharts, 500);
+});
 
-            // Search functionality for calculators
-            const searchInput = document.querySelector('input[type="text"]');
-            if (searchInput) {
-                searchInput.addEventListener('input', function(e) {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const calculatorCards = document.querySelectorAll('.bg-white.rounded-xl.shadow-sm'); // Select calculator cards
-                    
-                    calculatorCards.forEach(card => {
-                        const title = card.querySelector('h3').textContent.toLowerCase();
-                        const description = card.querySelector('p').textContent.toLowerCase();
-                        
-                        if (title.includes(searchTerm) || description.includes(searchTerm)) {
-                            card.style.display = 'block';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                });
-            }
-            
-            // Lazy loading for images (if added in future)
-            if ('IntersectionObserver' in window) {
-                const imageObserver = new IntersectionObserver((entries, observer) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const img = entry.target;
-                            img.src = img.dataset.src;
-                            img.classList.remove('lazy');
-                            imageObserver.unobserve(img);
-                        }
-                    });
-                });
+// Calculator Usage Chart
+function initializeCharts() {
+    const usageData = @json($calculatorUsage['data']);
+    const chartElement = document.getElementById('usageChart');
+    
+    if (!chartElement) {
+        console.error('Chart element not found');
+        return;
+    }
+    
+    if (usageData.length === 0) {
+        console.log('No usage data available');
+        // Hide chart container if no data
+        chartElement.closest('.chart-container').style.display = 'none';
+        return;
+    }
 
-                document.querySelectorAll('img[data-src]').forEach(img => {
-                    imageObserver.observe(img);
-                });
+    try {
+        const ctx = chartElement.getContext('2d');
+        
+        const labels = usageData.map(item => item.calculator);
+        const data = usageData.map(item => item.count);
+        const colors = usageData.map(item => item.color);
+        
+        // Destroy existing chart if it exists
+        if (window.usageChartInstance) {
+            window.usageChartInstance.destroy();
+        }
+        
+        window.usageChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 3,
+                    borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                    hoverBorderWidth: 4,
+                    hoverBorderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#f3f4f6',
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                cutout: '65%',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        },
+                        backgroundColor: document.documentElement.classList.contains('dark') ? '#374151' : '#ffffff',
+                        titleColor: document.documentElement.classList.contains('dark') ? '#f9fafb' : '#111827',
+                        bodyColor: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#374151',
+                        borderColor: document.documentElement.classList.contains('dark') ? '#4b5563' : '#e5e7eb',
+                        borderWidth: 1
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
             }
         });
+        
+        console.log('Chart initialized successfully');
+    } catch (error) {
+        console.error('Error initializing chart:', error);
+    }
+}
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    if (window.usageChartInstance) {
+        window.usageChartInstance.resize();
+    }
+});
     </script>
 </body>
 </html>
