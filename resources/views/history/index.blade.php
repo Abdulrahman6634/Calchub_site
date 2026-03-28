@@ -505,38 +505,39 @@
                                         </button>
                                     </td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="py-8 text-center text-gray-500 dark:text-gray-400">
-                                        <div class="flex flex-col items-center space-y-3">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            <div class="text-lg font-medium text-gray-600 dark:text-gray-400">
-                                                @if(request('search') || (request('type') && request('type') !== 'all'))
-                                                    No calculations found matching your criteria
-                                                @else
-                                                    No calculations yet
-                                                @endif
-                                            </div>
-                                            <p class="text-gray-500 dark:text-gray-400">
-                                                @if(request('search') || (request('type') && request('type') !== 'all'))
-                                                    Try adjusting your search or filter
-                                                @else
-                                                    Your calculation history will appear here
-                                                @endif
-                                            </p>
-                                            <a href="{{ route('history.index') }}" class="text-primary-600 dark:text-primary-400 hover:underline font-medium">
-                                                @if(request('search') || (request('type') && request('type') !== 'all'))
-                                                    Clear filters
-                                                @else
-                                                    Start calculating →
-                                                @endif
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
+@empty
+    <tr>
+        <td colspan="6" class="py-8 text-center text-gray-500 dark:text-gray-400">
+            <div class="flex flex-col items-center space-y-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div class="text-lg font-medium text-gray-600 dark:text-gray-400">
+                    @if(request('search') || (request('type') && request('type') !== 'all'))
+                        No calculations found matching your criteria
+                    @else
+                        No calculations yet
+                    @endif
+                </div>
+                <p class="text-gray-500 dark:text-gray-400">
+                    @if(request('search') || (request('type') && request('type') !== 'all'))
+                        Try adjusting your search or filter
+                    @else
+                        Your calculation history will appear here
+                    @endif
+                </p>
+                <a href="{{ request('search') || (request('type') && request('type') !== 'all') ? route('history.index') : route('home') }}" 
+                   class="text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                    @if(request('search') || (request('type') && request('type') !== 'all'))
+                        Clear filters
+                    @else
+                        Start calculating →
+                    @endif
+                </a>
+            </div>
+        </td>
+    </tr>
+@endempty
                         </tbody>
                     </table>
                 </div>

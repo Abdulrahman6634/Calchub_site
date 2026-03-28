@@ -328,7 +328,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-8 animate-scale-in">
             <div class="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <h2 class="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Recent Calculations</h2>
-                <a href="#" class="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium self-end sm:self-auto">
+                <a href="{{ route('history.index') }}" class="text-primary-600 dark:text-primary-400 hover:underline text-sm font-medium self-end sm:self-auto">
                     View All
                 </a>
             </div>
@@ -383,16 +383,7 @@
         </div>
 
         <!-- Calculator Grid -->
-        <div class="mb-8">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <h2 class="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Your Calculators</h2>
-                <div class="relative w-full sm:w-64">
-                    <input type="text" placeholder="Search calculators..." class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white transition-colors w-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-            </div>
+
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <!-- Calculator Cards with staggered animation -->

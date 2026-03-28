@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Profile - CalcHub</title>
     <script>
         if (
@@ -83,10 +84,9 @@
                             <i class="fas fa-user mr-2"></i>Profile
                         </a>
                         <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-                        <form method="POST" action="#">
-                            <button 
-                                type="submit" 
-                                class="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
                             </button>
                         </form>
@@ -192,7 +192,7 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                            <div id="currentPasswordError" class="text-red-500 text-sm mt-1 hidden"></div>
+                            <div id="current_passwordError" class="text-red-500 text-sm mt-1 hidden"></div>
                         </div>
 
                         <!-- New Password -->
@@ -213,7 +213,7 @@
                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 Password must be at least 8 characters with letters, numbers, and symbols.
                             </div>
-                            <div id="newPasswordError" class="text-red-500 text-sm mt-1 hidden"></div>
+                            <div id="new_passwordError" class="text-red-500 text-sm mt-1 hidden"></div>
                         </div>
 
                         <!-- Confirm New Password -->
@@ -231,7 +231,7 @@
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                            <div id="confirmPasswordError" class="text-red-500 text-sm mt-1 hidden"></div>
+                            <div id="new_password_confirmationError" class="text-red-500 text-sm mt-1 hidden"></div>
                         </div>
                     </div>
 
@@ -349,47 +349,83 @@
             }
         }
 
-        // Delete modal functions
-        function openDeleteModal() {
-            document.getElementById('deleteModal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.add('hidden');
-            document.getElementById('deleteForm').reset();
-            hideError('deletePasswordError');
-        }
-
         // Error handling functions
         function showError(elementId, message) {
             const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.classList.remove('hidden');
+            if (element) {
+                element.textContent = message;
+                element.classList.remove('hidden');
+            }
         }
 
         function hideError(elementId) {
             const element = document.getElementById(elementId);
-            element.classList.add('hidden');
+            if (element) {
+                element.classList.add('hidden');
+            }
         }
 
         function hideAllErrors() {
             hideError('nameError');
             hideError('emailError');
-            hideError('currentPasswordError');
-            hideError('newPasswordError');
-            hideError('confirmPasswordError');
+            hideError('current_passwordError');
+            hideError('new_passwordError');
+            hideError('new_password_confirmationError');
             hideError('deletePasswordError');
         }
 
         function showSuccess(elementId, message) {
             const element = document.getElementById(elementId);
             const messageElement = document.getElementById(elementId + 'Message');
-            messageElement.textContent = message;
-            element.classList.remove('hidden');
+            if (element && messageElement) {
+                messageElement.textContent = message;
+                element.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    element.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            // Remove existing notification if any
+            const existingNotification = document.getElementById('notification');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
             
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.id = 'notification';
+            
+            // Set notification styles based on type
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full ${bgColor} text-white`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${icon} mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Show notification
             setTimeout(() => {
-                element.classList.add('hidden');
-            }, 5000);
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 3000);
         }
 
         // Profile form submission
@@ -398,18 +434,18 @@
             
             const formData = new FormData(this);
             const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
             
             // Show loading state
             submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
             submitButton.disabled = true;
             
             hideAllErrors();
-            hideError('profileSuccess');
 
             fetch("{{ route('profile.update') }}", {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                     'Accept': 'application/json'
                 },
                 body: formData
@@ -433,15 +469,17 @@
                         Object.keys(data.errors).forEach(field => {
                             showError(field + 'Error', data.errors[field][0]);
                         });
+                    } else if (data.message) {
+                        showNotification(data.message, 'error');
                     }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showError('profileError', 'An error occurred. Please try again.');
+                showNotification('An error occurred. Please try again.', 'error');
             })
             .finally(() => {
-                submitButton.innerHTML = '<i class="fas fa-save mr-2"></i>Update Profile';
+                submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
             });
         });
@@ -452,18 +490,18 @@
             
             const formData = new FormData(this);
             const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
             
             // Show loading state
             submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Changing...';
             submitButton.disabled = true;
             
             hideAllErrors();
-            hideError('passwordSuccess');
 
             fetch("{{ route('profile.password') }}", {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                     'Accept': 'application/json'
                 },
                 body: formData
@@ -478,62 +516,163 @@
                         Object.keys(data.errors).forEach(field => {
                             showError(field + 'Error', data.errors[field][0]);
                         });
+                    } else if (data.message) {
+                        showNotification(data.message, 'error');
                     }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showError('passwordError', 'An error occurred. Please try again.');
+                showNotification('An error occurred. Please try again.', 'error');
             })
             .finally(() => {
-                submitButton.innerHTML = '<i class="fas fa-key mr-2"></i>Change Password';
+                submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
             });
         });
 
-        // Delete form submission
+        // Delete Account AJAX for DELETE route
         document.getElementById('deleteForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const formData = new FormData(this);
             const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            const passwordInput = document.getElementById('delete_password');
+            const errorDiv = document.getElementById('deletePasswordError');
             
-            // Show loading state
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+            // Disable submit button and show loading state
             submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
             
-            hideAllErrors();
-
-            fetch("{{ route('profile.delete') }}", {
+            // Clear previous errors
+            errorDiv.classList.add('hidden');
+            errorDiv.textContent = '';
+            passwordInput.classList.remove('border-red-500');
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            // Get password value
+            const password = passwordInput.value;
+            
+            // Send AJAX request with DELETE method
+            fetch('{{ route("profile.delete") }}', {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                body: formData
+                body: JSON.stringify({
+                    password: password
+                })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    }
+                    // Show success message
+                    showNotification(data.message || 'Account deleted successfully!', 'success');
+                    
+                    // Close modal
+                    closeDeleteModal();
+                    
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/';
+                    }, 2000);
                 } else {
-                    if (data.errors) {
-                        Object.keys(data.errors).forEach(field => {
-                            showError('deletePasswordError', data.errors[field][0]);
-                        });
+                    // Handle validation errors
+                    if (data.errors && data.errors.password) {
+                        errorDiv.textContent = data.errors.password[0];
+                        errorDiv.classList.remove('hidden');
+                        passwordInput.classList.add('border-red-500');
+                    } else {
+                        showNotification(data.message || 'Failed to delete account. Please try again.', 'error');
                     }
+                    
+                    // Re-enable submit button
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showError('deletePasswordError', 'An error occurred. Please try again.');
-            })
-            .finally(() => {
-                submitButton.innerHTML = '<i class="fas fa-trash mr-2"></i>Delete Account';
+                
+                // Handle validation errors from catch
+                if (error.errors && error.errors.password) {
+                    errorDiv.textContent = error.errors.password[0];
+                    errorDiv.classList.remove('hidden');
+                    passwordInput.classList.add('border-red-500');
+                } else {
+                    showNotification(error.message || 'An error occurred. Please try again.', 'error');
+                }
+                
+                // Re-enable submit button
                 submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
             });
+        });
+
+        // Delete Modal Functions
+        function openDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                
+                // Focus on password input
+                setTimeout(() => {
+                    const passwordInput = document.getElementById('delete_password');
+                    if (passwordInput) passwordInput.focus();
+                }, 100);
+            }
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            const form = document.getElementById('deleteForm');
+            const passwordInput = document.getElementById('delete_password');
+            const errorDiv = document.getElementById('deletePasswordError');
+            
+            // Reset form
+            if (form) form.reset();
+            
+            // Clear errors
+            if (errorDiv) {
+                errorDiv.classList.add('hidden');
+                errorDiv.textContent = '';
+            }
+            if (passwordInput) {
+                passwordInput.classList.remove('border-red-500');
+            }
+            
+            // Hide modal
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('deleteModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                const modalContent = modal.querySelector('.bg-white');
+                if (modalContent && !modalContent.contains(e.target)) {
+                    closeDeleteModal();
+                }
+            }
+        });
+
+        // Close modal on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('deleteModal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    closeDeleteModal();
+                }
+            }
         });
 
         // Dark mode functionality
@@ -558,20 +697,22 @@
             const darkIcon = document.getElementById('theme-toggle-dark-icon');
             const lightIcon = document.getElementById('theme-toggle-light-icon');
 
-            themeToggleBtn.addEventListener('click', function() {
-                // toggle icons
-                darkIcon.classList.toggle('hidden');
-                lightIcon.classList.toggle('hidden');
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', function() {
+                    // toggle icons
+                    darkIcon.classList.toggle('hidden');
+                    lightIcon.classList.toggle('hidden');
 
-                // toggle theme
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('color-theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('color-theme', 'dark');
-                }
-            });
+                    // toggle theme
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                });
+            }
         });
     </script>
 </body>
