@@ -95,40 +95,59 @@ class ProfileController extends Controller
         }
     }
 
-    public function deleteAccount(Request $request)
-    {
-        $user = Auth::user();
-
-        $validator = Validator::make($request->all(), [
-            'password' => 'required|current_password',
-        ]);
-
+public function deleteAccount(Request $request)
+{
+    $user = Auth::user();
+    
+    // Get password from JSON if it's a JSON request
+    $password = $request->input('password');
+    
+    // If it's a JSON request, manually validate
+    if ($request->isJson()) {
+        $validator = Validator::make(
+            ['password' => $password],
+            ['password' => 'required|current_password']
+        );
+        
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors()
             ], 422);
         }
-
-        try {
-            // You might want to add additional cleanup logic here
-            // For example, delete user's calculations, etc.
-            
-            $user->delete();
-
-            Auth::logout();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Account deleted successfully. Goodbye!',
-                'redirect' => url('/')
-            ]);
-
-        } catch (\Exception $e) {
+    } else {
+        // Regular form validation
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|current_password',
+        ]);
+        
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete account. Please try again.'
-            ], 500);
+                'errors' => $validator->errors()
+            ], 422);
         }
     }
+
+    try {
+        // You might want to add additional cleanup logic here
+        // For example, delete user's calculations, etc.
+        
+        $user->delete();
+        
+        Auth::logout();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Account deleted successfully. Goodbye!',
+            'redirect' => url('/')
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to delete account. Please try again.'
+        ], 500);
+    }
+}
 }

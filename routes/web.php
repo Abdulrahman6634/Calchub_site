@@ -30,6 +30,10 @@ Route::post('/signin', [AuthController::class, 'login'])->name('signin');
 Route::get('/signup', [AuthController::class, 'showSignupForm'])->name('signup.form');
 Route::post('/signup', [AuthController::class, 'signup'])->name('signup');
 
+//logout route
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
 // Password Reset Routes
 Route::get('/forgot-password', [PasswordResetController::class, 'showEmailForm'])->name('password.request');
 Route::post('/forgot-password/send-code', [PasswordResetController::class, 'sendVerificationCode'])->name('password.send-code');

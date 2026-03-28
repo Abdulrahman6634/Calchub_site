@@ -291,9 +291,16 @@
                     <label for="delete_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Enter your password to confirm
                     </label>
-                    <input type="password" id="delete_password" name="password" 
-                           class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white transition-colors" 
-                           placeholder="Enter your password" required>
+                    <div class="relative">
+                        <input type="password" id="delete_password" name="password" 
+                               class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:text-white transition-colors pr-10" 
+                               placeholder="Enter your password" required>
+                        <button type="button" 
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                onclick="togglePassword('delete_password')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                     <div id="deletePasswordError" class="text-red-500 text-sm mt-1 hidden"></div>
                 </div>
 
@@ -336,7 +343,8 @@
         // Password visibility toggle
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
-            const icon = input.nextElementSibling.querySelector('i');
+            const button = input.nextElementSibling;
+            const icon = button.querySelector('i');
             
             if (input.type === 'password') {
                 input.type = 'text';
@@ -530,93 +538,112 @@
                 submitButton.disabled = false;
             });
         });
-
-        // Delete Account AJAX for DELETE route
-        document.getElementById('deleteForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalButtonText = submitButton.innerHTML;
-            const passwordInput = document.getElementById('delete_password');
-            const errorDiv = document.getElementById('deletePasswordError');
-            
-            // Disable submit button and show loading state
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
-            
-            // Clear previous errors
-            errorDiv.classList.add('hidden');
-            errorDiv.textContent = '';
-            passwordInput.classList.remove('border-red-500');
-            
-            // Get CSRF token
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            
-            // Get password value
-            const password = passwordInput.value;
-            
-            // Send AJAX request with DELETE method
-            fetch('{{ route("profile.delete") }}', {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    password: password
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => Promise.reject(err));
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Show success message
-                    showNotification(data.message || 'Account deleted successfully!', 'success');
-                    
-                    // Close modal
-                    closeDeleteModal();
-                    
-                    // Redirect after a short delay
-                    setTimeout(() => {
-                        window.location.href = data.redirect || '/';
-                    }, 2000);
-                } else {
-                    // Handle validation errors
-                    if (data.errors && data.errors.password) {
-                        errorDiv.textContent = data.errors.password[0];
-                        errorDiv.classList.remove('hidden');
-                        passwordInput.classList.add('border-red-500');
-                    } else {
-                        showNotification(data.message || 'Failed to delete account. Please try again.', 'error');
-                    }
-                    
-                    // Re-enable submit button
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                
-                // Handle validation errors from catch
-                if (error.errors && error.errors.password) {
-                    errorDiv.textContent = error.errors.password[0];
-                    errorDiv.classList.remove('hidden');
-                    passwordInput.classList.add('border-red-500');
-                } else {
-                    showNotification(error.message || 'An error occurred. Please try again.', 'error');
-                }
-                
-                // Re-enable submit button
-                submitButton.disabled = false;
-                submitButton.innerHTML = originalButtonText;
+// Delete Account AJAX for DELETE route
+document.getElementById('deleteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitButton = this.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.innerHTML;
+    const passwordInput = document.getElementById('delete_password');
+    const errorDiv = document.getElementById('deletePasswordError');
+    
+    // Disable submit button and show loading state
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+    
+    // Clear previous errors
+    errorDiv.classList.add('hidden');
+    errorDiv.textContent = '';
+    passwordInput.classList.remove('border-red-500');
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    // Get password value
+    const password = passwordInput.value.trim();
+    
+    // Validate password is not empty
+    if (!password) {
+        errorDiv.textContent = 'Please enter your password.';
+        errorDiv.classList.remove('hidden');
+        passwordInput.classList.add('border-red-500');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+        return;
+    }
+    
+    // Create form data for DELETE request (Laravel works better with form data for DELETE)
+    const formData = new URLSearchParams();
+    formData.append('password', password);
+    formData.append('_token', csrfToken);
+    formData.append('_method', 'DELETE');
+    
+    // Send AJAX request
+    fetch('{{ route("profile.delete") }}', {
+        method: 'POST', // Use POST with _method=DELETE
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: formData.toString()
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw err;
             });
-        });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showNotification(data.message || 'Account deleted successfully!', 'success');
+            
+            // Close modal
+            closeDeleteModal();
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = data.redirect || '/';
+            }, 2000);
+        } else {
+            // Handle validation errors
+            if (data.errors && data.errors.password) {
+                errorDiv.textContent = data.errors.password[0];
+                errorDiv.classList.remove('hidden');
+                passwordInput.classList.add('border-red-500');
+            } else {
+                showNotification(data.message || 'Failed to delete account. Please try again.', 'error');
+            }
+            
+            // Re-enable submit button
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        
+        // Handle validation errors from catch
+        if (error.errors && error.errors.password) {
+            errorDiv.textContent = error.errors.password[0];
+            errorDiv.classList.remove('hidden');
+            passwordInput.classList.add('border-red-500');
+        } else if (error.message) {
+            errorDiv.textContent = error.message;
+            errorDiv.classList.remove('hidden');
+            passwordInput.classList.add('border-red-500');
+        } else {
+            showNotification('An error occurred. Please try again.', 'error');
+        }
+        
+        // Re-enable submit button
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+    });
+});
 
         // Delete Modal Functions
         function openDeleteModal() {
